@@ -45,71 +45,90 @@
     </div>
 
     <script>
-      const countOLines = 10;
-      let i = 10;
       const container = document.getElementById("container");
+
+      let countOfLines = 10;
+
       const createLine = () => {
         const line = document.createElement("div");
         line.classList.add("line");
         return line;
       };
 
-      while (i) {
+      while (countOfLines) {
         container.appendChild(createLine());
-        i -= 1;
+        countOfLines -= 1;
       }
 
+      const lines = document.getElementsByClassName("line");
+
+      const timeOut = (index, reverse) =>
+        (reverse ? lines.length - 1 - index : index) * 250;
+
       function animation(reverse = false) {
+        const method = reverse ? "reduceRight" : "reduce";
+
         return new Promise(resolve => {
-          const lines = document.getElementsByClassName("line");
-
-          const timeOut = index =>
-            (reverse ? lines.length - 1 - index : index) * 500;
-
-          const method = reverse ? "reduceRight" : "reduce";
-
           [...lines][method]((acum, element, index) => {
             setTimeout(() => {
               if (reverse) {
-                if (lines[index + 1]) {
+                if (lines[index + 1])
                   lines[index + 1].classList.remove("line-animation");
-                  // element.classList.add("line-animation");
-                }
-                element.classList.add("line-animation");
-                if (!index) {
-                  // lines[index].classList.remove("line-animation");
-                  resolve();
-                }
-              } else {
-                if (index - 1 > -1) {
-                  lines[index - 1].classList.remove("line-animation");
-                }
+
                 element.classList.add("line-animation");
 
-                if (index + 1 === lines.length) {
-                  // lines[index].classList.remove("line-animation");
-                  resolve();
-                }
+                if (!index) resolve();
+              } else {
+                if (index - 1 > -1)
+                  lines[index - 1].classList.remove("line-animation");
+
+                element.classList.add("line-animation");
+
+                if (index + 1 === lines.length) resolve();
               }
-            }, timeOut(index));
+            }, timeOut(index, reverse));
           }, 0);
         });
       }
 
       var myWorker = new SharedWorker("./shared-worker.js");
 
+      let pageNumber;
+
       myWorker.port.onmessage = function({ data: message }) {
         console.log(message);
 
         switch (message.key) {
-          case "is-first":
-            if (message.value)
-              animation().then(() => myWorker.port.postMessage("end"));
+          case "connect":
+            pageNumber = message.increment;
+            myWorker.port.postMessage({ key: "start", increment: pageNumber });
+            break;
+
+          case "start":
+            // if (!pageNumber) pageNumber = message.increment;
+            console.log(pageNumber, message.increment);
+
+            if (pageNumber === message.increment)
+              animation().then(() =>
+                myWorker.port.postMessage({ key: "end", increment: pageNumber })
+              );
             break;
 
           case "end":
-            if (message.value)
-              animation(true).then(() => myWorker.port.postMessage("is-first"));
+            if (pageNumber === message.increment)
+              animation(true).then(() =>
+                myWorker.port.postMessage({
+                  key: "start",
+                  increment: message.increment
+                })
+              );
+            else
+              animation(true).then(() =>
+                myWorker.port.postMessage({
+                  key: "end",
+                  increment: message.increment
+                })
+              );
             break;
 
           default:
@@ -118,7 +137,8 @@
         // animation(true);
       };
 
-      myWorker.port.postMessage("is-first");
+      // myWorker.port.postMessage("is-first");
+      myWorker.port.start();
       console.log(myWorker.port);
     </script>
   </body>
