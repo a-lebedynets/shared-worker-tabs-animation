@@ -1,75 +1,54 @@
 let connections = [];
-let increment = 0;
+let pageNumber = 0;
 let animationId;
 let isLast = false;
 
 onconnect = function (e) {
     e.source.start();
-
     const port = e.ports[0];
 
-    increment++;
-    console.log(increment);
-
-
+    pageNumber++;
     connections.push({
-        id: increment,
+        id: pageNumber,
         connection: port,
     });
 
-    port.postMessage({ key: 'connect', increment });
+    port.postMessage({ key: 'connect', pageNumber });
 
     e.source.onmessage = ({ data }) => {
-        console.log(data);
 
         switch (data.key) {
 
-            // case 'connect':
-            //     port.postMessage({ key: 'connect', increment });
-            //     break;
-
             case 'start':
                 if (animationId) return;
-                animationId = data.increment;
-                connections[increment - 1].connection.postMessage({ key: 'start', increment: data.increment });
+                animationId = data.pageNumber;
+                connections[pageNumber - 1]
+                    .connection.postMessage({ key: 'start', pageNumber: data.pageNumber });
                 break;
 
             case 'end':
-                // if (animationId === data.increment) {
-
-                console.log(increment, animationId);
-
-                if (increment > data.increment && !isLast) {
+                if (pageNumber > data.pageNumber && !isLast) {
                     animationId++;
-                    connections[data.increment].connection.postMessage({ key: 'start', increment: animationId });
+                    connections[data.pageNumber]
+                        .connection.postMessage({ key: 'start', pageNumber: animationId });
                 } else {
-                    if (animationId > 0) {
+                    if (animationId) {
                         isLast = true;
                         animationId--;
                         if (connections[animationId])
-                            connections[animationId].connection.postMessage({ key: 'end', increment: animationId });
+                            connections[animationId]
+                                .connection.postMessage({ key: 'end', pageNumber: animationId });
                     } else {
                         isLast = false;
                         animationId = 1;
-                        connections[data.increment].connection.postMessage({ key: 'start', increment: animationId });
+                        connections[data.pageNumber]
+                            .connection.postMessage({ key: 'start', pageNumber: animationId });
                     }
-
                 }
-                // else {
-                //     port.postMessage({ key: 'end', increment });
-                // }
-                // } else {
-
-                // }
-                // 
                 break;
 
             default:
                 break;
         }
-        // console.log(message);
-        // if (increment === 1) {
-        //     port.postMessage();
-        // } else port.postMessage();
     };
 }

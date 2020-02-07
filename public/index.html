@@ -74,16 +74,12 @@
               if (reverse) {
                 if (lines[index + 1])
                   lines[index + 1].classList.remove("line-animation");
-
                 element.classList.add("line-animation");
-
                 if (!index) resolve();
               } else {
                 if (index - 1 > -1)
                   lines[index - 1].classList.remove("line-animation");
-
                 element.classList.add("line-animation");
-
                 if (index + 1 === lines.length) resolve();
               }
             }, timeOut(index, reverse));
@@ -93,53 +89,44 @@
 
       var myWorker = new SharedWorker("./shared-worker.js");
 
+      const postMessage = (key, pageNumber) => {
+        myWorker.port.postMessage({
+          key,
+          pageNumber
+        });
+      };
+
       let pageNumber;
 
       myWorker.port.onmessage = function({ data: message }) {
-        console.log(message);
-
         switch (message.key) {
           case "connect":
-            pageNumber = message.increment;
-            myWorker.port.postMessage({ key: "start", increment: pageNumber });
+            pageNumber = message.pageNumber;
+            postMessage("start", pageNumber);
             break;
 
           case "start":
-            // if (!pageNumber) pageNumber = message.increment;
-            console.log(pageNumber, message.increment);
-
-            if (pageNumber === message.increment)
-              animation().then(() =>
-                myWorker.port.postMessage({ key: "end", increment: pageNumber })
-              );
+            if (pageNumber === message.pageNumber)
+              animation().then(() => postMessage("end", pageNumber));
             break;
 
           case "end":
-            if (pageNumber === message.increment)
+            if (pageNumber === message.pageNumber)
               animation(true).then(() =>
-                myWorker.port.postMessage({
-                  key: "start",
-                  increment: message.increment
-                })
+                postMessage("start", message.pageNumber)
               );
             else
               animation(true).then(() =>
-                myWorker.port.postMessage({
-                  key: "end",
-                  increment: message.increment
-                })
+                postMessage("end", message.pageNumber)
               );
             break;
 
           default:
             break;
         }
-        // animation(true);
       };
 
-      // myWorker.port.postMessage("is-first");
       myWorker.port.start();
-      console.log(myWorker.port);
     </script>
   </body>
 </html>
